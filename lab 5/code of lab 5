@@ -1,0 +1,114 @@
+#include <stdio.h>
+
+struct process {
+    int id, at, bt, type;
+    int ct, wt, tat;
+};
+
+// Sort by type (priority) then arrival time
+void sort(struct process p[], int n) {
+    struct process temp;
+    for(int i = 0; i < n-1; i++) {
+        for(int j = i+1; j < n; j++) {
+            if(p[i].type > p[j].type ||
+               (p[i].type == p[j].type && p[i].at > p[j].at)) {
+                temp = p[i];
+                p[i] = p[j];
+                p[j] = temp;
+            }
+        }
+    }
+}
+
+int main() {
+    int n;
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    struct process p[n];
+
+    int gantt_p[100], gantt_t[100], g = 0;
+
+    // Input
+    for(int i = 0; i < n; i++) {
+        p[i].id = i;
+
+        printf("\nProcess %d\n", i);
+        printf("Enter arrival time: ");
+        scanf("%d", &p[i].at);
+        printf("Enter burst time: ");
+        scanf("%d", &p[i].bt);
+        printf("Enter type (0 = System, 1 = User): ");
+        scanf("%d", &p[i].type);
+    }
+
+    // Sort
+    sort(p, n);
+
+    int time = 0;
+    gantt_t[g] = 0;
+
+    // Scheduling (FCFS with priority)
+    for(int i = 0; i < n; i++) {
+
+        if(time < p[i].at)
+            time = p[i].at;
+
+        gantt_p[g] = p[i].id;
+        gantt_t[g] = time;
+
+        time += p[i].bt;
+
+        p[i].ct = time;
+        p[i].tat = p[i].ct - p[i].at;
+        p[i].wt = p[i].tat - p[i].bt;
+
+        g++;
+        gantt_t[g] = time;
+    }
+
+    // Output Table
+    float total_wt = 0, total_tat = 0;
+
+    printf("\nID\tType\tAT\tBT\tCT\tWT\tTAT\n");
+
+    for(int i = 0; i < n; i++) {
+        printf("%d\t%s\t%d\t%d\t%d\t%d\t%d\n",
+               p[i].id,
+               (p[i].type == 0) ? "System" : "User",
+               p[i].at, p[i].bt,
+               p[i].ct, p[i].wt, p[i].tat);
+
+        total_wt += p[i].wt;
+        total_tat += p[i].tat;
+    }
+
+    printf("\nAverage Waiting Time: %.2f", total_wt / n);
+    printf("\nAverage Turnaround Time: %.2f\n", total_tat / n);
+
+    // -------- GANTT CHART --------
+    printf("\nGantt Chart:\n");
+
+    // Top bar
+    for(int i = 0; i < n; i++)
+        printf("--------");
+    printf("\n");
+
+    // Process labels
+    for(int i = 0; i < n; i++)
+        printf("| P%d   ", gantt_p[i]);
+    printf("|\n");
+
+    // Bottom bar
+    for(int i = 0; i < n; i++)
+        printf("--------");
+    printf("\n");
+
+    // Time values
+    for(int i = 0; i <= n; i++)
+        printf("%-8d", gantt_t[i]);
+
+    printf("\n");
+
+    return 0;
+}
