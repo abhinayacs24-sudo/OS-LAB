@@ -1,0 +1,134 @@
+Bounded Buffer
+
+
+
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+
+#define SIZE 3
+#define ITEMS 8
+
+int buffer[SIZE];
+int in = 0, out = 0;
+
+sem_t empty, full, mutex;
+
+void *producer(void *arg) {
+    for (int i = 0; i < ITEMS; i++) {
+
+        sem_wait(&empty);
+        sem_wait(&mutex);
+
+        buffer[in] = i;
+        printf("Produced: %d at buffer[%d]\n", i, in);
+
+        in = (in + 1) % SIZE;
+
+        sem_post(&mutex);
+        sem_post(&full);
+    }
+    return NULL;
+}
+
+void *consumer(void *arg) {
+    int item;
+
+    for (int i = 0; i < ITEMS; i++) {
+
+        sem_wait(&full);
+        sem_wait(&mutex);
+
+        item = buffer[out];
+        printf("Consumed: %d from buffer[%d]\n", item, out);
+
+        out = (out + 1) % SIZE;
+
+        sem_post(&mutex);
+        sem_post(&empty);
+    }
+    return NULL;
+}
+
+int main() {
+    pthread_t p, c;
+
+    sem_init(&empty, 0, SIZE); // 3 empty slots
+    sem_init(&full, 0, 0);     // 0 full slots
+    sem_init(&mutex, 0, 1);    // lock
+
+    pthread_create(&p, NULL, producer, NULL);
+    pthread_create(&c, NULL, consumer, NULL);
+
+    pthread_join(p, NULL);
+    pthread_join(c, NULL);
+
+    return 0;
+}
+
+
+
+Dining Philosopher
+
+
+
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define N 5
+
+sem_t forks[N];
+sem_t room;
+
+void *philosopher(void *num) {
+    int id = *(int *)num;
+
+    while (1) {
+        printf("Philosopher %d is thinking.\n", id);
+        sleep(1);
+
+        sem_wait(&room);
+
+        // pick left fork
+        sem_wait(&forks[id]);
+        printf("Philosopher %d picked up left fork %d.\n", id, id);
+
+        // pick right fork
+        sem_wait(&forks[(id + 1) % N]);
+        printf("Philosopher %d picked up right fork %d.\n", id, (id + 1) % N);
+
+        printf("Philosopher %d is eating.\n", id);
+        sleep(1);
+
+        // put forks down
+        sem_post(&forks[id]);
+        sem_post(&forks[(id + 1) % N]);
+
+        printf("Philosopher %d put down forks %d and %d.\n",
+               id, id, (id + 1) % N);
+
+        sem_post(&room);
+    }
+}
+
+int main() {
+    pthread_t ph[N];
+    int ids[N];
+
+    sem_init(&room, 0, N - 1);
+
+    for (int i = 0; i < N; i++)
+        sem_init(&forks[i], 0, 1);
+
+    for (int i = 0; i < N; i++) {
+        ids[i] = i;
+        pthread_create(&ph[i], NULL, philosopher, &ids[i]);
+    }
+
+    for (int i = 0; i < N; i++)
+        pthread_join(ph[i], NULL);
+
+    return 0;
+}
